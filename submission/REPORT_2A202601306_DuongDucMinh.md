@@ -5,7 +5,7 @@
 ## 1. Thông tin sinh viên
 - **Họ và tên**: Dương Đức Minh
 - **Mã số sinh viên (MSSV)**: `2A202601306`
-- **Nhóm**: `Day13-K4-Team02`
+- **Nhóm**: `HIHI_HAHA`
 - **Vai trò đảm nhiệm**: **Dashboard, SLO & Alert Rules Lead**
 
 ---
