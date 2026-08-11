@@ -23,14 +23,28 @@ class JsonlFileProcessor:
 
 
 
+AUDIT_PATH = Path(os.getenv("AUDIT_LOG_PATH", "data/audit.jsonl"))
+
+
+class AuditLogProcessor:
+    def __call__(self, logger: Any, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+        event = str(event_dict.get("event", ""))
+        if any(keyword in event for keyword in ("request", "response", "incident", "started", "auth", "security")):
+            AUDIT_PATH.parent.mkdir(parents=True, exist_ok=True)
+            rendered = structlog.processors.JSONRenderer()(logger, method_name, event_dict)
+            with AUDIT_PATH.open("a", encoding="utf-8") as f:
+                f.write(rendered + "\n")
+        return event_dict
+
+
 def scrub_event(_: Any, __: str, event_dict: dict[str, Any]) -> dict[str, Any]:
-    payload = event_dict.get("payload")
-    if isinstance(payload, dict):
-        event_dict["payload"] = {
-            k: scrub_text(v) if isinstance(v, str) else v for k, v in payload.items()
-        }
-    if "event" in event_dict and isinstance(event_dict["event"], str):
-        event_dict["event"] = scrub_text(event_dict["event"])
+    for key, value in list(event_dict.items()):
+        if isinstance(value, str):
+            event_dict[key] = scrub_text(value)
+        elif isinstance(value, dict):
+            event_dict[key] = {
+                k: scrub_text(v) if isinstance(v, str) else v for k, v in value.items()
+            }
     return event_dict
 
 
@@ -42,11 +56,11 @@ def configure_logging() -> None:
             merge_contextvars,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso", utc=True, key="ts"),
-            # TODO: Register your PII scrubbing processor here
-            # scrub_event,
+            scrub_event,
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
             JsonlFileProcessor(),
+            AuditLogProcessor(),
             structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
