@@ -3,12 +3,14 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
+from structlog.contextvars import get_contextvars
+
 from . import metrics
 from .mock_llm import FakeLLM
 from .mock_rag import retrieve
 from .pii import hash_user_id, summarize_text
 from .prompt_management import resolve_prompt
-from .tracing import get_langfuse_client, observe, tracing_enabled
+from .tracing import get_langfuse_client, get_otel_tracer, observe, tracing_enabled
 
 
 @dataclass
@@ -29,30 +31,45 @@ class LabAgent:
     @observe(as_type="generation", capture_input=False, capture_output=False)
     def run(self, user_id: str, feature: str, session_id: str, message: str) -> AgentResult:
         started = time.perf_counter()
-        docs = retrieve(message)
-        langfuse_client = get_langfuse_client()
-        prompt = resolve_prompt(
-            langfuse_client,
-            feature=feature,
-            docs=docs,
-            message=message,
-            enabled=tracing_enabled(),
-        )
-        response = self.llm.generate(prompt.text)
-        quality_score = self._heuristic_quality(message, response.text, docs)
-        latency_ms = int((time.perf_counter() - started) * 1000)
-        cost_usd = self._estimate_cost(response.usage.input_tokens, response.usage.output_tokens)
+        tracer = get_otel_tracer()
+        with tracer.start_as_current_span("agent.run") as span:
+            docs = retrieve(message)
+            langfuse_client = get_langfuse_client()
+            prompt = resolve_prompt(
+                langfuse_client,
+                feature=feature,
+                docs=docs,
+                message=message,
+                enabled=tracing_enabled(),
+            )
+            response = self.llm.generate(prompt.text)
+            quality_score = self._heuristic_quality(message, response.text, docs)
+            latency_ms = int((time.perf_counter() - started) * 1000)
+            cost_usd = self._estimate_cost(response.usage.input_tokens, response.usage.output_tokens)
+            cid = get_contextvars().get("correlation_id", "MISSING")
+
+            span.set_attribute("app.correlation_id", cid)
+            span.set_attribute("app.user_id_hash", hash_user_id(user_id))
+            span.set_attribute("app.session_id", session_id)
+            span.set_attribute("app.feature", feature)
+            span.set_attribute("llm.model", self.model)
+            span.set_attribute("llm.tokens.input", response.usage.input_tokens)
+            span.set_attribute("llm.tokens.output", response.usage.output_tokens)
+            span.set_attribute("app.cost_usd", cost_usd)
+            span.set_attribute("app.quality_score", quality_score)
+
+        metadata = {
+            "prompt_name": prompt.name,
+            "prompt_label": prompt.label,
+            "prompt_version": prompt.version,
+            "prompt_source": prompt.source,
+        }
 
         langfuse_client.update_current_trace(
             user_id=hash_user_id(user_id),
             session_id=session_id,
             tags=["lab", feature, self.model],
-            metadata={
-                "prompt_name": prompt.name,
-                "prompt_label": prompt.label,
-                "prompt_version": prompt.version,
-                "prompt_source": prompt.source,
-            },
+            metadata=metadata,
         )
         langfuse_client.update_current_generation(
             model=self.model,

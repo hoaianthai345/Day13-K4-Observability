@@ -47,6 +47,7 @@ Processor `scrub_event` trong `app/logging_config.py` được đăng ký trư�
 - *File bằng chứng*: [`submission/evidence/validate_logs_result.txt`](evidence/validate_logs_result.txt)
 
 ### Evidence Trace Waterfall
+- *Ảnh bằng chứng Langfuse UI*: [`submission/evidence/langfuse_trace_waterfall.png`](evidence/langfuse_trace_waterfall.png)
 - *File bằng chứng chi tiết*: [`submission/evidence/traces_and_waterfall.md`](evidence/traces_and_waterfall.md)
 - *Phân rã thời gian một request chuẩn (~151 ms)*:
   1. `api.middleware`: 0.5 ms (khởi tạo contextvars).
@@ -71,6 +72,7 @@ Trong kịch bản incident `rag_slow`, span **`mock_rag.retrieve`** tăng vọt
 - **Bằng chứng đổi label hoặc rollback**:
   - Sau khi chuyển `production` sang Version 2, phát hiện output dài làm tăng token usage và chi phí.
   - Nhóm đã thực hiện **Rollback** label `production` về lại Version 1. Trace sau rollback `trace-lf-v1-rollback-003` (Correlation ID: `req-bb5d1f71`) ghi nhận `prompt_version: "1"`, `prompt_label: "production"`.
+  - *Ảnh bằng chứng Langfuse UI*: [`submission/evidence/langfuse_prompt_versioning.png`](evidence/langfuse_prompt_versioning.png)
   - *Chi tiết evidence*: [`submission/evidence/prompt_versioning_and_rollback.md`](evidence/prompt_versioning_and_rollback.md).
 
 ---
