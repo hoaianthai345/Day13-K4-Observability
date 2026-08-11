@@ -4,7 +4,7 @@
 
 ## 1. Thông tin nhóm
 
-- **Tên nhóm**: Day13-K4-Team02
+- **Tên nhóm**: HIHI_HAHA
 - **Repository URL**: `https://github.com/hoaianthai345/Day13-K4-2A202601862.git`
 - **Commit SHA cuối**: `5ba64725aaf0b5b4d51c28772973373d98d0f149`
 - **Thành viên và vai trò**:
