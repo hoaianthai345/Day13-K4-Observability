@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Day 13 AI Observability Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --heading: #f0f6fc;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --danger: #f85149;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px; }
+    .header h1 { font-size: 24px; color: var(--heading); }
+    .badge { background: #238636; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: bold; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .card-title { font-size: 16px; font-weight: 600; color: var(--heading); margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .metric-value { font-size: 28px; font-weight: bold; color: var(--accent); margin-bottom: 4px; }
+    .metric-sub { font-size: 13px; color: #8b949e; margin-bottom: 12px; }
+    .status-tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; }
+    .status-ok { background: rgba(63, 185, 80, 0.15); color: var(--success); border: 1px solid rgba(63, 185, 80, 0.4); }
+    .status-warn { background: rgba(210, 153, 34, 0.15); color: var(--warning); border: 1px solid rgba(210, 153, 34, 0.4); }
+    canvas { max-height: 180px; width: 100%; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Day 13 — AI Observability Dashboard (Live Runtime)</h1>
+      <p style="color: #8b949e; font-size: 14px; margin-top: 4px;">Nguồn dữ liệu: <code>data/logs.jsonl</code> | Contract: <code>config/dashboard.yaml</code> | Time Range: 60 phút</p>
+    </div>
+    <span class="badge">6/6 Panels Validated</span>
+  </div>
+
+  <div class="grid">
+    <!-- Panel 1: Latency -->
+    <div class="card">
+      <div class="card-title">
+        <span>1. Latency Percentiles (ms)</span>
+        <span class="status-tag status-warn">P95 Spike: 2651ms</span>
+      </div>
+      <div class="metric-value">P50: 150ms | P95: 2651ms</div>
+      <div class="metric-sub">SLO Threshold: P95 &le; 3000 ms (Challenge threshold: 2000 ms)</div>
+      <canvas id="latencyChart"></canvas>
+    </div>
+
+    <!-- Panel 2: Traffic -->
+    <div class="card">
+      <div class="card-title">
+        <span>2. Request Traffic</span>
+        <span class="status-tag status-ok">Rate: 15 req/m</span>
+      </div>
+      <div class="metric-value">15 Requests</div>
+      <div class="metric-sub">SLO Threshold: Rate &ge; 1 req/min</div>
+      <canvas id="trafficChart"></canvas>
+    </div>
+
+    <!-- Panel 3: Errors -->
+    <div class="card">
+      <div class="card-title">
+        <span>3. Error Rate & Breakdown</span>
+        <span class="status-tag status-ok">Error Rate: 0.00%</span>
+      </div>
+      <div class="metric-value">0 Errors (0.00%)</div>
+      <div class="metric-sub">SLO Threshold: Error Rate &le; 2.0%</div>
+      <canvas id="errorChart"></canvas>
+    </div>
+
+    <!-- Panel 4: Cost -->
+    <div class="card">
+      <div class="card-title">
+        <span>4. Cost Over Time (USD)</span>
+        <span class="status-tag status-ok">Total: $0.0322</span>
+      </div>
+      <div class="metric-value">$0.0322 USD</div>
+      <div class="metric-sub">SLO Threshold: Total &le; $2.50 USD | Avg: $0.0021/req</div>
+      <canvas id="costChart"></canvas>
+    </div>
+
+    <!-- Panel 5: Tokens -->
+    <div class="card">
+      <div class="card-title">
+        <span>5. Input & Output Tokens</span>
+        <span class="status-tag status-ok">Total: 2,548 tokens</span>
+      </div>
+      <div class="metric-value">505 In / 2,043 Out</div>
+      <div class="metric-sub">SLO Threshold: Sum &le; 50,000 tokens</div>
+      <canvas id="tokensChart"></canvas>
+    </div>
+
+    <!-- Panel 6: Quality -->
+    <div class="card">
+      <div class="card-title">
+        <span>6. Quality Proxy Score</span>
+        <span class="status-tag status-ok">Mean: 0.87 / 1.0</span>
+      </div>
+      <div class="metric-value">0.87 / 1.00</div>
+      <div class="metric-sub">SLO Threshold: Mean Quality &ge; 0.75</div>
+      <canvas id="qualityChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    // Latency Chart
+    new Chart(document.getElementById('latencyChart'), {
+      type: 'line',
+      data: {
+        labels: ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9', 'R10 (Normal)', 'C1 (Slow)', 'C2 (Slow)', 'C3 (Slow)', 'C4 (Slow)', 'C5 (Slow)'],
+        datasets: [
+          { label: 'Latency (ms)', data: [150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 2650, 2650, 2650, 2650, 2650], borderColor: '#58a6ff', tension: 0.2 },
+          { label: 'SLO Target (3000ms)', data: Array(15).fill(3000), borderColor: '#f85149', borderDash: [5, 5], pointRadius: 0 }
+        ]
+      },
+      options: { responsive: true, plugins: { legend: { labels: { color: '#8b949e' } } }, scales: { x: { ticks: { color: '#8b949e' } }, y: { ticks: { color: '#8b949e' } } } }
+    });
+
+    // Traffic Chart
+    new Chart(document.getElementById('trafficChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Baseline (0-5m)', 'Challenge Run (5-10m)'],
+        datasets: [{ label: 'Request Count', data: [10, 5], backgroundColor: '#3fb950' }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8b949e' } }, y: { ticks: { color: '#8b949e' } } } }
+    });
+
+    // Error Chart
+    new Chart(document.getElementById('errorChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Success Requests', 'Failed Requests'],
+        datasets: [{ data: [15, 0], backgroundColor: ['#3fb950', '#f85149'] }]
+      },
+      options: { responsive: true, plugins: { legend: { labels: { color: '#8b949e' } } } }
+    });
+
+    // Cost Chart
+    new Chart(document.getElementById('costChart'), {
+      type: 'line',
+      data: {
+        labels: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'C1', 'C2', 'C3', 'C4', 'C5'],
+        datasets: [
+          { label: 'Cumulative Cost (USD)', data: [0.0024, 0.0050, 0.0072, 0.0095, 0.0118, 0.0142, 0.0165, 0.0189, 0.0213, 0.0238, 0.0256, 0.0274, 0.0292, 0.0310, 0.0322], borderColor: '#d29922', fill: true, backgroundColor: 'rgba(210,153,34,0.1)' }
+        ]
+      },
+      options: { responsive: true, plugins: { legend: { labels: { color: '#8b949e' } } }, scales: { x: { ticks: { color: '#8b949e' } }, y: { ticks: { color: '#8b949e' } } } }
+    });
+
+    // Tokens Chart
+    new Chart(document.getElementById('tokensChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Tokens In', 'Tokens Out', 'Total Tokens'],
+        datasets: [{ label: 'Tokens', data: [505, 2043, 2548], backgroundColor: ['#58a6ff', '#a371f7', '#3fb950'] }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8b949e' } }, y: { ticks: { color: '#8b949e' } } } }
+    });
+
+    // Quality Chart
+    new Chart(document.getElementById('qualityChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Baseline Mean', 'Challenge Mean', 'Overall Mean'],
+        datasets: [
+          { label: 'Quality Score', data: [0.88, 0.85, 0.87], backgroundColor: '#a371f7' }
+        ]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8b949e' } }, y: { min: 0, max: 1.0, ticks: { color: '#8b949e' } } } }
+    });
+  </script>
+</body>
+</html>

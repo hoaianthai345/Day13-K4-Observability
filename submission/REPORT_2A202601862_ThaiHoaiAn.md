@@ -5,7 +5,7 @@
 ## 1. Thông tin sinh viên
 - **Họ và tên**: Thái Hoài An
 - **Mã số sinh viên (MSSV)**: `2A202601862`
-- **Nhóm**: `Day13-K4-Team02`
+- **Nhóm**: `HIHI_HAHA`
 - **Vai trò đảm nhiệm**: **Incident Investigation, Challenge Debugging, Report & Demo Lead (Trưởng nhóm)**
 
 ---

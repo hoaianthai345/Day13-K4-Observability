@@ -5,7 +5,7 @@
 ## 1. Thông tin sinh viên
 - **Họ và tên**: Phạm Tấn Gia Quốc
 - **Mã số sinh viên (MSSV)**: `2A202601606`
-- **Nhóm**: `Day13-K4-Team02`
+- **Nhóm**: `HIHI_HAHA`
 - **Vai trò đảm nhiệm**: **Logging & PII Redaction Lead**
 
 ---

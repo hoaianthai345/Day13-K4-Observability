@@ -20,6 +20,7 @@
 | **v1 (Baseline/Prod)** | `Feature={{feature}}\nDocs={{docs}}\nQuestion={{message}}` | `baseline`, `production` | Hoạt động ổn định |
 | **v2 (Candidate)** | `[Detailed Step-by-Step Explanation Mode]\nFeature={{feature}}\nDocs={{docs}}\nQuestion={{message}}` | `candidate` | Đang thử nghiệm |
 
+
 ---
 
 ## 3. Nhật ký chuyển đổi Label và Rollback (Label Transition & Rollback Log)
